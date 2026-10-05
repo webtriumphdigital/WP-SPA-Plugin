@@ -1,0 +1,261 @@
+@tailwind utilities;
+
+/* Cursor animation */
+.td-spa-animate-cursor,
+.td-spa-animate-cursor * {
+	cursor: var(--td-spa-cursor-mode);
+}
+
+/* Comment form processing state */
+.td-spa-comment-form-processing {
+	opacity: 0.5;
+	pointer-events: none;
+	user-select: none;
+	cursor: progress;
+	position: relative;
+}
+
+.td-spa-comment-form-processing:after {
+	content: '';
+	display: block;
+	width: 100%;
+	height: 100%;
+	background-color: var(--td-spa-color-background, #fff);
+	opacity: 0.5;
+	border-radius: 10px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 1000;
+	background-image: linear-gradient(
+		120deg,
+		rgba(255, 255, 255, 0) 0%,
+		rgba(255, 255, 255, 0.6) 50%,
+		rgba(255, 255, 255, 0) 100%
+	);
+	background-size: 200% 100%;
+	animation: td-spa-comment-shimmer 1.2s linear infinite;
+	pointer-events: none;
+}
+
+@keyframes td-spa-comment-shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+/* Progress bar */
+.td-spa-progressbar {
+	@apply ap-fixed ap-left-0 ap-z-[9999] ap-w-0;
+	transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
+}
+
+.td-spa-progressbar.progressbar-wave {
+	background: linear-gradient(
+		90deg,
+		var(--progressbar-color) 0%,
+		color-mix(in srgb, var(--progressbar-color) 70%, white) 50%,
+		var(--progressbar-color) 100%
+	);
+	background-size: 200% 100%;
+	animation: progressbar-wave var(--animation-speed, 1.5s) linear infinite;
+}
+
+@keyframes progressbar-wave {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
+.td-spa-progressbar.preview {
+	@apply ap-absolute;
+}
+
+.td-spa-progressbar-hidden {
+	@apply ap-opacity-0 ap-z-0;
+}
+
+/* Spinner */
+.td-spa-spinner {
+	@apply ap-fixed ap-z-30 ap-hidden ap-left-0 ap-top-0 ap-w-full ap-h-full ap-items-center ap-justify-center ap-transition-all ap-duration-500;
+}
+
+.td-spa-spinner-hidden {
+	animation: fade-out 0.3s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.td-spa-spinner:not(.td-spa-spinner-hidden) {
+	@apply ap-flex;
+}
+
+.td-spa-spinner-overlay {
+	@apply ap-absolute ap-left-0 ap-top-0 ap-w-full ap-h-full ap-z-30;
+}
+
+.td-spa-spinner-content {
+	@apply ap-flex ap-items-center ap-justify-center ap-z-40 ap-transition-all ap-px-4 ap-py-2;
+	max-width: 90vw;
+	box-sizing: border-box;
+}
+
+.td-spa-spinner-image {
+	@apply ap-transition-all ap-h-auto ap-flex-shrink-0;
+	max-width: 80px;
+	max-height: 80px;
+}
+
+.td-spa-spinner-text {
+	@apply ap-transition-all ap-text-center;
+	word-break: break-word;
+	overflow-wrap: break-word;
+}
+
+@keyframes fade-out {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		pointer-events: none;
+		visibility: hidden;
+	}
+}
+
+/* ===== FADE ===== */
+.td-spa-animate-fade-out {
+	animation: ap-fade-out var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.td-spa-animate-fade-in {
+	animation: ap-fade-in var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes ap-fade-out {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+@keyframes ap-fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+/* ===== SLIDE ===== */
+.td-spa-animate-slide-out {
+	animation: ap-slide-out var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.td-spa-animate-slide-in {
+	animation: ap-slide-in var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes ap-slide-out {
+	from { transform: translateY(0); opacity: 1; }
+	to { transform: translateY(-30px); opacity: 0; }
+}
+
+@keyframes ap-slide-in {
+	from { transform: translateY(30px); opacity: 0; }
+	to { transform: translateY(0); opacity: 1; }
+}
+
+/* ===== FLIP ===== */
+.td-spa-animate-flip-out {
+	animation: ap-flip-out var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.td-spa-animate-flip-in {
+	animation: ap-flip-in var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes ap-flip-out {
+	from { transform: perspective(800px) rotateX(0); opacity: 1; }
+	to { transform: perspective(800px) rotateX(90deg); opacity: 0; }
+}
+
+@keyframes ap-flip-in {
+	from { transform: perspective(800px) rotateX(-90deg); opacity: 0; }
+	to { transform: perspective(800px) rotateX(0); opacity: 1; }
+}
+
+/* ===== SCALE ===== */
+.td-spa-animate-scale-out {
+	animation: ap-scale-out var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.td-spa-animate-scale-in {
+	animation: ap-scale-in var(--td-spa-animation-duration, 0.3s) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes ap-scale-out {
+	from { transform: scale(1); opacity: 1; }
+	to { transform: scale(0.9); opacity: 0; }
+}
+
+@keyframes ap-scale-in {
+	from { transform: scale(0.9); opacity: 0; }
+	to { transform: scale(1); opacity: 1; }
+}
+
+/* Accessibility */
+.td-spa-sr-only {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	overflow: hidden !important;
+	clip: rect(0, 0, 0, 0) !important;
+	white-space: nowrap !important;
+	border-width: 0 !important;
+}
+
+/* Enhanced Focus Indicators - Only active for keyboard users */
+.td-spa-enhanced-focus.td-spa-keyboard-user a:focus,
+.td-spa-enhanced-focus.td-spa-keyboard-user button:focus,
+.td-spa-enhanced-focus.td-spa-keyboard-user input:focus,
+.td-spa-enhanced-focus.td-spa-keyboard-user select:focus,
+.td-spa-enhanced-focus.td-spa-keyboard-user textarea:focus,
+.td-spa-enhanced-focus.td-spa-keyboard-user [tabindex]:focus {
+	outline: 3px solid #4f46e5 !important;
+	outline-offset: 2px !important;
+	box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3) !important;
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+	.td-spa-enhanced-focus.td-spa-keyboard-user a:focus,
+	.td-spa-enhanced-focus.td-spa-keyboard-user button:focus,
+	.td-spa-enhanced-focus.td-spa-keyboard-user input:focus,
+	.td-spa-enhanced-focus.td-spa-keyboard-user select:focus,
+	.td-spa-enhanced-focus.td-spa-keyboard-user textarea:focus,
+	.td-spa-enhanced-focus.td-spa-keyboard-user [tabindex]:focus {
+		outline: 3px solid CanvasText !important;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.td-spa-animate-fade-out,
+	.td-spa-animate-fade-in,
+	.td-spa-animate-slide-out,
+	.td-spa-animate-slide-in,
+	.td-spa-animate-flip-out,
+	.td-spa-animate-flip-in,
+	.td-spa-animate-scale-out,
+	.td-spa-animate-scale-in {
+		animation: none !important;
+		transition: none !important;
+		opacity: 1 !important;
+		transform: none !important;
+	}
+
+	.td-spa-progressbar {
+		transition: none !important;
+	}
+
+	html {
+		scroll-behavior: auto !important;
+	}
+}

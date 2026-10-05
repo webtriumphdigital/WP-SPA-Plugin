@@ -1,0 +1,34 @@
+{
+  "name": "td-spa",
+  "version": "2.4.2",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "admin": "npx vite build --config ./src/admin/vite.config.js --watch",
+    "frontend": "npx vite build --config ./src/frontend/vite.config.js --watch",
+    "report": "phpcs . > report.txt",
+    "test": "node --test tests/**/*.test.mjs && npm run test:php",
+    "test:php": "for f in tests/*.php tests/cloudflare/*.php; do php \"$f\" || exit 1; done",
+    "test:browser": "node tests/browser/run.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://www.triumphdigital.co.th"
+  },
+  "keywords": [],
+  "author": "Triumph Digital",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://www.triumphdigital.co.th"
+  },
+  "homepage": "https://www.triumphdigital.co.th",
+  "devDependencies": {
+    "@solidjs/router": "^0.15.2",
+    "autoprefixer": "^10.4.4",
+    "postcss": "^8.4.12",
+    "solid-js": "^1.9.3",
+    "tailwindcss": "^3.0.23",
+    "vite": "^6.0.3",
+    "vite-plugin-solid": "^2.11.0"
+  }
+}

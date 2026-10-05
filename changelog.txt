@@ -1,0 +1,153 @@
+== TD SPA Changelog ==
+
+Full version history for TD SPA - Single Page Application for WP.
+
+== Changelog ==
+
+= 2.4.2 =
+* Fix: Opening a page in a visual builder could leave the builder blank or unresponsive. Divi, Bricks, Beaver Builder, Oxygen, Breakdance, WPBakery, Visual Composer, Zion, Thrive and Brizy all open on the ordinary front-end address of the page with a marker on the end, and TD SPA was treating that as a page to take over. It now recognises a builder session and stays out of it entirely, on the page itself and on any link leading to one. The Customizer preview is treated the same way
+* Fix: Google Analytics 4 reported "Average engagement time" as zero on every page. Analytics measure engagement against the page the visitor is looking at, and that page had never been handed keyboard focus, so no time was ever counted however long someone stayed. Engagement is measured again, for Google Analytics and for any other script that works the same way
+* Fix: Cookie and consent banners could appear twice on the first page someone loads, along with anything else a script adds after the page is ready - promo popups, chat widgets, sticky bars. Only one copy is shown now
+* Fix: A form could be submitted twice when the plugin behind it attaches its handler to the page rather than to the form. The entry was saved, but the plugin's own follow-up - the confirmation message, the notification email - could be cut off part way. Forms whose plugin attaches to the form itself, which is most of them, were never affected
+* New: Add data-td-spa-ignore-submit to a form, or to anything containing it, to keep it out of ajax submission entirely and let it submit the ordinary way
+* Fix: Mini carts and other panel toggles still navigated away on 2.4.1 when the theme opens the panel from a shared click handler rather than one attached to the link itself, which is what most themes do. Tapping the cart icon opened the mini cart and then landed the visitor on the cart page anyway
+* Fix: A page's own script could stop running partway through. Where a persistent player was carried over, the copy on the incoming page was taken out before that page's script looked for it, so the script hit a missing element and everything after it in the same block never ran, commonly other footer features like popups
+
+= 2.4.1 =
+* Fix: Media players kept on screen across navigation stopped responding - Play, Stop and open/close buttons did nothing, with no error and no sound. The player is now carried over as the live element instead of being rebuilt from its markup, so whatever script powers it keeps working
+* Fix: A persistent player could be dropped mid-navigation on slower pages - the audio simply stopped. Pages that are still loading when navigation completes are no longer mistaken for pages that have no player
+* Fix: Links that act as buttons now keep working - a WooCommerce or theme mini cart, offcanvas panels, mega menu and search toggles, quick view. Tapping one opened its panel and then navigated to the link's page anyway, which on mobile dropped shoppers on the cart page. WooCommerce's ajax "Add to cart" was affected the same way and added the product by reloading the page instead
+* Changed: The plugin now ships its unminified JavaScript sources, so the code behind the minified bundles can be read and rebuilt from the download itself
+* Changed: The readme now documents every external service TD SPA can talk to, what triggers each one and what is sent: PackEdge, Cloudflare, our Cloudflare OAuth relay, and the optional deactivation feedback form
+* Changed: The optional deactivation feedback form no longer sends your WordPress username. Only the reason, your comment and the site URL are sent, and only if you submit the form
+
+= 2.4.0 =
+* New: Connect to Cloudflare in one click with OAuth - no API token to create or paste (where available for your account; pasting a token still works everywhere)
+* New: "Don't cache this page" toggle in the editor (classic and block editors), for pages that should always be served fresh
+* New: Dynamic pages are excluded from edge caching automatically - WooCommerce cart, checkout and account, add-to-cart links, and any page that sets cookies or uses nonces
+* New: Cache health readout showing how many sampled pages are served from the edge, plus a Pause switch to stop edge caching instantly without disconnecting
+* New: Edits appear without anyone waiting. When you update a page, the next visitor is served the copy that already exists - instantly, without hitting your server - while Cloudflare fetches the new version in the background. From then on everyone sees the update. You publish, it appears; nobody sees a slow page and nobody has to purge anything
+* New: "Scan my pages" finds pages that should not be cached - anything setting a cookie, carrying a security token, or containing a form - and excludes them in one click. Recommended right after connecting. Note that forms added by JavaScript after the page loads cannot be detected this way
+* Improved: The Cache screen is reorganised around the questions you actually have. Everything about which pages to keep out of the cache is in one place, and the rarely-touched settings are behind "Show advanced settings"
+* New: Optional second cache layer. Cloudflare's edge cache is per-location, so a visitor in a region that has not loaded a page yet still waits for your server. The second layer keeps a globally shared copy, so those visitors are served from Cloudflare too. Off by default; pages are refreshed when you publish, and a purged page can take up to a minute to clear worldwide
+* New: Exclude individual posts and pages from caching by searching for them, instead of typing URLs by hand
+* New: Exclude whole categories, tags or other taxonomy terms. Excluding a term also excludes every post filed under it
+* New: Configurable edge cache lifetime and exclude-URL list in the Cache settings
+* Improved: Edge page caching now reliably caches HTML and applies setting changes at the edge without redeploying the Cloudflare worker
+* Improved: The Cache screen now shows whether your Cloudflare account is connected and how, keeps showing it after a reload, and offers a Disconnect option. Returning from the Cloudflare authorization screen lands you back on the Cache settings with a clear success or error message instead of the general WordPress settings page
+* New: Logging in and registering now work over ajax with no page refresh, the same as the rest of your site. This includes the WooCommerce My Account login and registration forms, and a failed login shows its error in place
+* New: The WordPress login screen (wp-login.php) is now part of the SPA. Signing in, registering, and resetting a password no longer reload the page, and a failed attempt shows its error in place. Previously this was the one screen TD SPA never ran on. If a login sends you somewhere outside the SPA, such as the dashboard, TD SPA hands over to a normal page load so you always land correctly. Turn on the full page reload setting for auth forms, or use the `td_spa_ajax_login` filter, to opt out
+* New: Full Page Reload on Login & Registration setting, off by default. Turn it on only if your sign-in flow needs a real page load, for example a security or membership plugin that redirects or challenges on login
+* Fixed: Logging in or registering through WooCommerce My Account did nothing when TD SPA was active. The value of the button you clicked was being dropped from intercepted form submissions, and WooCommerce relies on it to know the form was submitted. This also affected contact forms, search filters, and WordPress admin save buttons that behave differently depending on which button was pressed
+* Fixed: Forms containing a field named "action", "method", "submit", or "target" broke TD SPA form handling entirely. This is a very common pattern: nearly every WordPress admin form uses it, as does any plugin form posting to admin-ajax.php or admin-post.php
+* Fixed: Forms whose own JavaScript submits them, such as the classic WooCommerce checkout and most contact form plugins, could be submitted twice. TD SPA now steps aside when another script takes over a submission
+* Fixed: On a freshly loaded or reloaded page, submitting a form could reload the whole page instead of submitting over ajax, while the same form worked correctly after navigating to the page from elsewhere. On a fresh load the page shell holds its own copy of every form, and that copy was left active behind the scenes; it is now disabled, and anything that still reaches it is routed through ajax instead of reloading
+* Fixed: WooCommerce notices were missing after a form submission, so failed logins showed no error and saving account details showed no confirmation
+* Fixed: A persistent player kept playing on pages that do not include one. Player continuity now follows the page: it is added when a page has one and the shell does not, kept playing when the next page has the same one, and removed when the next page has none. Switching to a different player no longer leaves both running
+* Fixed: A persistent audio or video player could carry over from the frontend into the WordPress dashboard and keep playing there. The frontend and the dashboard are separate areas and never share a player: moving between them is always a normal page load
+* Fixed: Several admin dashboard screens did not save correctly with SPA for Admin Dashboard enabled, caused by the form handling issues above
+* Changed: If you are on WordPress 7.0 or newer, the settings screen now points out that WordPress navigates the dashboard itself and recommends leaving SPA for Admin Dashboard off, since running two navigators at once can conflict. On older versions it stays highlighted as the only way to get instant admin page loads
+
+= 2.3.4 =
+* Fixed: On block themes such as Twenty Twenty-Five, the browser back button could trigger a full page reload that reset persistent players. TD SPA now switches off WordPress's built-in block navigation scripts that competed with its own SPA navigation
+
+= 2.3.3 =
+* New: Cloudflare cache integration - purge and manage Cloudflare edge cache directly from the TD SPA settings panel
+* Fixed: Duplicate browser-history entries. Each navigation now adds exactly one entry, hovering links no longer pollutes history, and the back button no longer traps visitors in a loop
+* Fixed: Back/forward navigation that hits a server redirect no longer creates unwanted forward entries
+* Fixed: The td-spa:ready event now fires after the URL and title are updated, so analytics listeners read the correct page
+* New: td_spa_page_view dataLayer event for Google Analytics 4 / Tag Manager. Fires once per navigation with page_location, page_title, and a measured engagement_time_msec, restoring GA4's "Average engagement time" metric that otherwise reads zero on SPA sites
+* New: td-spa-loading and td-spa-complete events are now emitted as documented in the Help tab
+* Fixed: Ctrl/Cmd+click and Shift+click on links now open a new tab or window instead of navigating in place
+* Fixed: target="_blank" is now matched case-insensitively, and a site-wide <base target> is honored
+* Fixed: Links with a download attribute are no longer intercepted by SPA navigation
+* Fixed: Elements opted into persistence (data-td-spa-persist, .td-spa-persist, or the Ignore Elements setting) no longer appear twice in the page shell
+* Fixed: Audio or video from the previous page no longer keeps playing invisibly after navigation. The old page is fully unloaded once the transition completes
+* Fixed: Persistent media players no longer double their audio. The hidden original copy left in the page shell is removed once the player is lifted into the persistent container
+* Fixed: Premium settings (Media Players, Exclude Links, loader customizations) are no longer erased when a license check fails or the plugin is re-activated. Saved values now survive license changes and simply pause while a license is inactive
+* Fixed: A temporary license-server outage no longer deactivates your license. Only a definitive invalid-key response does, so seat-limited plans can't get locked out by a server hiccup
+* Security: The license key is no longer printed in the public page source. The frontend now receives only a validity flag, and the site admin email is no longer exposed either
+
+= 2.3.2 =
+* New: Rebuilt licensing and activation - faster, more reliable license validation and a smoother activation flow
+* New: Send feedback directly from the Help page, with a quick happy / neutral / unhappy rating
+* New: Rating prompt to share your experience, plus a one-click way to leave a review
+* New: Optional diagnostic sharing (only with your consent) so we can reproduce and fix issues faster
+* Improved: Deactivation now asks for a quick, optional reason to help us improve the plugin
+* Changed: Minimum required PHP is now 7.1
+* Changed: Tested up to WordPress 7.0
+
+= 2.3.1 =
+* Fixed: JSON-LD structured data (Yoast, Rank Math, SEOPress, etc.) is now replaced cleanly on every navigation, resolving duplicated BreadcrumbList and "Missing field 'item'" errors in Google Search Console
+* Fixed: Canonical, OpenGraph, and Twitter Card meta tags now sync to the parent shell on every nav, so social previews and search engines see the page being viewed instead of the initial-load URL
+* Fixed: Iframe sub-document is now flagged noindex,nofollow so JS-rendering crawlers do not double-index the same URL twice
+* Fixed: External links with target="_blank" now open in a new tab instead of replacing the current page
+* Fixed: Persistent player no longer briefly duplicates on Mobile Safari during scroll-and-hold gestures
+* Fixed: Persistent elements with sticky child widgets (Elementor) are now properly hidden in the iframe source
+* New: Persistent media (audio, video, radio widgets in `<div id="persistent-*">` containers, or anything with `[data-td-spa-persist]` / `.td-spa-persist`) is now lifted into the parent shell on first encounter and reused across navigation. The same DOM element keeps playing without reload on every page change. Honors the existing Ignore Elements setting.
+* New: `td-spa:ready` event dispatches on document after each navigation. Use it to re-initialize external scripts (ads, analytics widgets, lazy loaders): `document.addEventListener('td-spa:ready', e => { /* e.detail.url, e.detail.title */ })`
+
+= 2.3.0 =
+* New: SPA navigation for wp-admin area
+* New: Option to block keyboard reload (F5/Ctrl+R)
+* New: Prefetch on mousedown for even faster navigation
+* New: Option to skip already visited links in prefetch
+* Fixed: Theme and plugin compatibility issues
+* Fixed: Sliders, carousels, and animations now work without configuration
+* Fixed: Forms, search, and comments work out of the box
+* Improved: Simplified settings panel with cleaner defaults
+* Improved: No more script re-execution configuration needed
+
+= 2.2.5 =
+* Fixed: Modal not reopening after first use (event listener memory leak)
+* Fixed: Sliders and countdown timers freezing (timer cleanup now preserves third-party timers)
+* Fixed: Forms, comments, search, and accessibility features breaking after AJAX navigation
+* Fixed: Search forms not responding on first click after page change
+* Fixed: CSS breaking on theme pages (expanded protection patterns)
+* Fixed: Back button issues with hash URLs
+* Improved: Same-page links now properly AJAX reload
+* Improved: Prevent Reloads feature uses AJAX reload and only prompts when inputs are modified
+* Improved: Prefetch properly cancels when mouse leaves link
+
+= 2.2.4 =
+* Improved: Redesigned preview panel with realistic website mockup
+* Improved: Simplified Help page - cleaner Getting Started and Troubleshooting sections
+* Improved: Help search now scrolls to and highlights the selected result
+* Fixed: Desktop/mobile toggle now works correctly in preview panel
+* Update: Renamed "Appearance" section to "Customization"
+
+= 2.2.3 =
+* New: Preserve Elements - keep DOM elements intact during navigation
+* New: Persistent Player - audio/video continues across pages
+* Improved: Script loading with proper sequencing
+* Improved: Same-page click handling
+
+= 2.2.2 =
+* New: Feature tour guide
+* Improved: Script re-execution logic
+* Improved: Timer/interval cleanup
+
+= 2.2.1 =
+* New: Script Re-execution for sliders
+* New: Exclude Scripts by URL
+* Improved: Third-party compatibility
+
+= 2.2.0 =
+* Complete UI redesign
+* New: Link Prefetch, Disable on Mobile
+* New: Custom CSS, Developer Hooks
+
+= 2.1.1 =
+* New: Translation support
+* Improved: Caching compatibility
+
+= 2.1.0 =
+* Fixed: JS conflicts
+* Improved: Page builder compatibility
+
+= 2.0.0 =
+* Major rewrite with new AJAX engine
+* New: Progress bar, cursor animation, page transitions
+
+= 1.0 =
+* Initial release
