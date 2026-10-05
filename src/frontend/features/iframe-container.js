@@ -717,6 +717,8 @@ const initParent = () => {
         margin: 0;
         padding: 0;
         z-index: 999999;
+        opacity: 0;
+        transition: opacity 0.25s ease-out;
     `
 
     // Background iframe (always exists for smooth transitions). Built by a
@@ -1055,47 +1057,8 @@ const initParent = () => {
         })
     }
 
-    // Initial-load sync runs exactly once. After the first crossfade, the
-    // original iframe element becomes the background and its load listener
-    // would otherwise re-fire on every subsequent prefetch/nav, producing
-    // duplicate td-spa:ready events alongside the crossfade dispatch.
-    let initialLoadHandled = false
-    iframe.addEventListener('load', () => {
-        if (!initialLoadHandled) {
-            initialLoadHandled = true
-            syncMetaToParent(iframe.contentWindow)
-            syncJsonLdToParent(iframe.contentWindow)
-            liftPersistentMediaToParent(iframe.contentWindow)
-            // The landing page counts too - its snippet is in the iframe
-            // like every other page's.
-            focusActiveFrame()
-            dispatchAjaxpressReady(iframe.contentWindow)
-        }
-        loader.complete()
-    })
-
-    // Hide original page content
-    document.documentElement.style.overflow = 'hidden'
-    document.body.style.overflow = 'hidden'
-    document.body.style.margin = '0'
-    document.body.style.padding = '0'
-
-    // Hide all body children.
-    //
-    // On a cold load the shell document *is* the current page, so every form
-    // on it exists twice: once here and once inside the iframe. Only the
-    // iframe copy carries the submit interception, so if anything reaches the
-    // shell copy - a password manager autofilling and submitting, assistive
-    // tech, a click landing before the wrap completes - it submits natively
-    // and the page hard-reloads instead of navigating over ajax. That is why
-    // the symptom only shows on a fresh load or reload of a form page and
-    // never after routing to it, where the shell holds the previous page.
-    //
-    // display:none alone hides without disabling, so mark the residual
-    // content inert as well: no focus, no clicks, no autofill target.
-    //
-    // TD SPA's own furniture is exempt however late it is appended - the
-    // loader in particular only joins the body when a spinner first starts.
+    // Hide original page content once the iframe has loaded.
+    // Keeping the original body visible during initial load prevents the blank page flash.
     const isShellFurniture = (el) => (
         el.id === 'td-spa-container' ||
         el.id === 'td-spa-background' ||
@@ -1113,25 +1076,52 @@ const initParent = () => {
         node.inert = true
     }
 
-    Array.from(document.body.children).forEach(hideShellNode)
+    let shellHidden = false
+    const handoverToIframe = () => {
+        if (shellHidden) return
+        shellHidden = true
 
-    // The shell keeps running the original page's scripts, and one that
-    // appends its UI after this point - a consent banner, a cookie bar, a
-    // promo modal, anything on a timer or waiting on its own SDK - lands
-    // after the pass above and renders over the iframe, alongside the
-    // iframe's copy of the same widget. That is the "the consent popup opens
-    // twice" report. Hide whatever the shell adds from here on; the iframe's
-    // copy is the live one, wired to the page the visitor is actually on.
-    //
-    // Direct children of body only. Third-party widgets append at body level,
-    // and watching the subtree would mean a callback for every DOM change the
-    // shell's leftover scripts make for the rest of the visit.
-    const shellObserver = new MutationObserver(records => {
-        records.forEach(record => {
-            record.addedNodes.forEach(hideShellNode)
+        // Reveal the loaded iframe
+        iframe.style.opacity = '1'
+
+        // Wait a frame so the rendered iframe is painted over the shell before hiding shell content
+        requestAnimationFrame(() => {
+            // Hide original page content
+            document.documentElement.style.overflow = 'hidden'
+            document.body.style.overflow = 'hidden'
+            document.body.style.margin = '0'
+            document.body.style.padding = '0'
+
+            Array.from(document.body.children).forEach(hideShellNode)
+
+            const shellObserver = new MutationObserver(records => {
+                records.forEach(record => {
+                    record.addedNodes.forEach(hideShellNode)
+                })
+            })
+            shellObserver.observe(document.body, { childList: true })
         })
+    }
+
+    // Initial-load sync runs exactly once. After the first crossfade, the
+    // original iframe element becomes the background and its load listener
+    // would otherwise re-fire on every subsequent prefetch/nav, producing
+    // duplicate td-spa:ready events alongside the crossfade dispatch.
+    let initialLoadHandled = false
+    iframe.addEventListener('load', () => {
+        if (!initialLoadHandled) {
+            initialLoadHandled = true
+            syncMetaToParent(iframe.contentWindow)
+            syncJsonLdToParent(iframe.contentWindow)
+            liftPersistentMediaToParent(iframe.contentWindow)
+            // The landing page counts too - its snippet is in the iframe
+            // like every other page's.
+            focusActiveFrame()
+            dispatchAjaxpressReady(iframe.contentWindow)
+            handoverToIframe()
+        }
+        loader.complete()
     })
-    shellObserver.observe(document.body, { childList: true })
 
     // Listen for messages from iframe
     window.addEventListener('message', (e) => {
@@ -1279,6 +1269,9 @@ const initParent = () => {
 
         // Handle main iframe nav (initial load or internal navigation)
         if (type === 'TD_SPA_NAV' && e.source === iframe.contentWindow) {
+            if (initialLoadHandled) {
+                handoverToIframe()
+            }
             loader.complete()
             // The iframe's own navigation (or its pushState) already added
             // the joint session-history entry the Back button walks; a
@@ -2184,7 +2177,8 @@ const initIframeChild = () => {
         // Parent document inaccessible - nothing to sync.
     }
 
-    // Notify parent of current page on load
+    // Notify parent of current page on load once the DOM is ready.
+    // Waiting for DOMContentLoaded/load prevents handover while Elementor sections/images are half-rendered.
     const notifyParent = () => {
         window.parent.postMessage({
             type: 'TD_SPA_NAV',
@@ -2193,8 +2187,11 @@ const initIframeChild = () => {
         }, window.location.origin)
     }
 
-    // Notify on initial load
-    notifyParent()
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', notifyParent, { once: true })
+    } else {
+        notifyParent()
+    }
 
     // Watch for title changes
     const titleObserver = new MutationObserver(() => {

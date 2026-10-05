@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "npx vite build --config ./src/frontend/vite.config.js && npx vite build --config ./src/admin/vite.config.js",
+    "build:frontend": "npx vite build --config ./src/frontend/vite.config.js",
+    "build:admin": "npx vite build --config ./src/admin/vite.config.js",
     "admin": "npx vite build --config ./src/admin/vite.config.js --watch",
     "frontend": "npx vite build --config ./src/frontend/vite.config.js --watch",
     "report": "phpcs . > report.txt",
