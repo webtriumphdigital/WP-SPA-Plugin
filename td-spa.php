@@ -3,7 +3,7 @@
  * Plugin Name:       TD SPA
  * Plugin URI:        https://www.triumphdigital.co.th
  * Description:       Instant page loads with zero reload. AJAX navigation, persistent audio/video players, and prefetch. Only 14KB frontend footprint. Perfect for radio, podcast, and media sites.
- * Version:           0.1.1
+ * Version:           0.1.0
  * Requires at least: 5.3
  * Requires PHP:      7.1
  * Author:            Triumph Digital
@@ -24,7 +24,7 @@ if ( defined('TD_SPA') ) {
 
 // Define file constants.
 define( 'TD_SPA', __FILE__ );
-define( 'TD_SPA_VERSION', '0.1.1' );
+define( 'TD_SPA_VERSION', '0.1.0' );
 
 // Require the boot loader.
 require_once __DIR__ . '/includes/class-boot.php';

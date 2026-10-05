@@ -231,6 +231,15 @@ const BYPASS_SCHEMES = [
     'file:'
 ]
 
+// Effective browsing-context target for an anchor or form: its own target
+// attribute, else the document's <base target>. Lowercased because the
+// spec matches _blank/_top/_parent case-insensitively.
+const getEffectiveTarget = (el) => (
+    el.getAttribute('target') ||
+    document.querySelector('base[target]')?.getAttribute('target') ||
+    ''
+).toLowerCase()
+
 /**
  * Notify theme/plugin code in the parent that a new page is fully visible.
  * Dispatched after the head sync runs, so listeners can read the fresh
@@ -706,7 +715,6 @@ const initParent = () => {
 
     let iframe = document.createElement('iframe')
     iframe.id = 'td-spa-container'
-    iframe.src = window.location.href
     iframe.style.cssText = `
         position: fixed;
         top: 0;
@@ -718,6 +726,8 @@ const initParent = () => {
         padding: 0;
         z-index: 999999;
         opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
         transition: opacity 0.25s ease-out;
     `
 
@@ -993,8 +1003,15 @@ const initParent = () => {
             }
         }
 
-        // Cross-fade between iframes
-        transition.crossFade(oldIframe, newIframe).then(() => {
+        // If this is the first SPA transition from the initial native shell page:
+        // oldIframe is dormant, so animate newIframe in and handover shell content
+        const transitionPromise = !shellHidden
+            ? transition.animateIn(newIframe).then(() => {
+                handoverToIframe()
+            })
+            : transition.crossFade(oldIframe, newIframe)
+
+        transitionPromise.then(() => {
             // Update references after animation
             swapIframes()
 
@@ -1103,25 +1120,9 @@ const initParent = () => {
         })
     }
 
-    // Initial-load sync runs exactly once. After the first crossfade, the
-    // original iframe element becomes the background and its load listener
-    // would otherwise re-fire on every subsequent prefetch/nav, producing
-    // duplicate td-spa:ready events alongside the crossfade dispatch.
+    // Initial load runs directly in the parent window shell.
+    // The dormant iframe only receives pages upon subsequent SPA link clicks or popstate.
     let initialLoadHandled = false
-    iframe.addEventListener('load', () => {
-        if (!initialLoadHandled) {
-            initialLoadHandled = true
-            syncMetaToParent(iframe.contentWindow)
-            syncJsonLdToParent(iframe.contentWindow)
-            liftPersistentMediaToParent(iframe.contentWindow)
-            // The landing page counts too - its snippet is in the iframe
-            // like every other page's.
-            focusActiveFrame()
-            dispatchAjaxpressReady(iframe.contentWindow)
-            handoverToIframe()
-        }
-        loader.complete()
-    })
 
     // Listen for messages from iframe
     window.addEventListener('message', (e) => {
@@ -1267,9 +1268,9 @@ const initParent = () => {
             return // Don't process further - this is from background iframe
         }
 
-        // Handle main iframe nav (initial load or internal navigation)
+        // Handle main iframe nav (subsequent SPA navigation or internal navigation)
         if (type === 'TD_SPA_NAV' && e.source === iframe.contentWindow) {
-            if (initialLoadHandled) {
+            if (!shellHidden) {
                 handoverToIframe()
             }
             loader.complete()
@@ -1340,6 +1341,102 @@ const initParent = () => {
     }
     document.addEventListener('submit', onShellSubmit, false)
     reRegisterSubmitLast(onShellSubmit)
+
+    // Intercept link clicks and prefetch on the initial parent shell
+    let parentPrefetchTimeout = null
+    const requestParentPrefetch = (targetUrl) => {
+        if (!targetUrl || shouldBypass(targetUrl)) return
+        if (prefetchEnabled && targetUrl !== window.location.href && targetUrl !== prefetchedUrl && targetUrl !== navigationState.url) {
+            prefetchedUrl = targetUrl
+            prefetchReady = false
+            dispatchNavEvent('td-spa-loading', { url: targetUrl, prefetch: true })
+            loadInBackground(targetUrl)
+        }
+    }
+
+    if (prefetchEnabled) {
+        document.addEventListener('mouseover', (e) => {
+            if (shellHidden) return
+            const anchor = e.target.closest('a')
+            if (!anchor) return
+
+            const hrefAttr = anchor.getAttribute('href')
+            if (!hrefAttr) return
+            if (hrefAttr === '#' || (hrefAttr.startsWith('#') && !hrefAttr.includes('/'))) return
+            if (hrefAttr.startsWith('javascript:')) return
+
+            const fullUrl = anchor.href
+            if (!fullUrl || shouldBypass(fullUrl)) return
+
+            const target = getEffectiveTarget(anchor)
+            if (target === '_blank' || target === '_top' || target === '_parent') return
+            if (anchor.hasAttribute('download')) return
+
+            const currentUrl = window.location.href.split('#')[0]
+            const targetUrl = fullUrl.split('#')[0]
+            if (targetUrl === currentUrl && fullUrl.includes('#')) return
+
+            clearTimeout(parentPrefetchTimeout)
+            parentPrefetchTimeout = setTimeout(() => {
+                requestParentPrefetch(fullUrl)
+            }, 100)
+        }, { passive: true })
+
+        document.addEventListener('mouseout', (e) => {
+            if (shellHidden) return
+            if (e.target.closest('a')) {
+                clearTimeout(parentPrefetchTimeout)
+            }
+        }, { passive: true })
+    }
+
+    // Window click interception for shell content before handover
+    window.addEventListener('click', (e) => {
+        if (shellHidden) return
+        if (e.defaultPrevented) return
+
+        const anchor = e.target.closest('a')
+        if (!anchor) return
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+        if (anchor.hasAttribute('download')) return
+
+        const href = anchor.getAttribute('href')
+        if (!href) return
+        if (href === '#' || (href.startsWith('#') && !href.includes('/'))) return
+        if (href.startsWith('javascript:')) return
+
+        const fullUrl = anchor.href
+        const currentUrl = window.location.href.split('#')[0]
+        const targetUrl = fullUrl.split('#')[0]
+        if (targetUrl === currentUrl && fullUrl.includes('#')) return
+
+        const target = getEffectiveTarget(anchor)
+        if (target === '_blank' || target === '_top' || target === '_parent') return
+
+        if (shouldBypass(fullUrl)) {
+            return
+        }
+
+        e.preventDefault()
+        clearTimeout(parentPrefetchTimeout)
+
+        loader.start()
+        dispatchNavEvent('td-spa-loading', { url: fullUrl, prefetch: false })
+
+        if (prefetchedUrl === fullUrl && prefetchReady) {
+            navigationState = { url: fullUrl, pending: false, isHistory: false }
+            prefetchedUrl = null
+            prefetchReady = false
+            performCrossfade(fullUrl, undefined, false, true)
+        } else {
+            navigationState = { url: fullUrl, pending: true, isHistory: false }
+            if (prefetchedUrl !== fullUrl) {
+                prefetchedUrl = null
+                prefetchReady = false
+                loadInBackground(fullUrl)
+            }
+        }
+    })
 
     // Handle browser back/forward in parent
     window.addEventListener('popstate', () => {
@@ -2202,15 +2299,6 @@ const initIframeChild = () => {
     if (titleEl) {
         titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true })
     }
-
-    // Effective browsing-context target for an anchor or form: its own target
-    // attribute, else the document's <base target>. Lowercased because the
-    // spec matches _blank/_top/_parent case-insensitively.
-    const getEffectiveTarget = (el) => (
-        el.getAttribute('target') ||
-        document.querySelector('base[target]')?.getAttribute('target') ||
-        ''
-    ).toLowerCase()
 
     // Prefetch timeout for debouncing
     let prefetchTimeout = null
